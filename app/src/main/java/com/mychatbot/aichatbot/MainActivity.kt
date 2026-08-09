@@ -61,11 +61,13 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+data class QuickReply(val emoji: String, val label: String, val prompt: String, val boxColor: Color)
+
 private val quickReplies = listOf(
-    "⏰ Jam berapa" to "Sekarang jam berapa?",
-    "💡 Kasih ide" to "Kasih aku ide dong",
-    "📝 Bantu nulis" to "Bantu aku nulis sesuatu",
-    "😄 Lelucon" to "Kasih aku lelucon lucu"
+    QuickReply("⏰", "Jam berapa", "Sekarang jam berapa?", Color(0xFFE8A33D)),
+    QuickReply("💡", "Kasih ide", "Kasih aku ide dong", Color(0xFF2FBF9F)),
+    QuickReply("📝", "Bantu nulis", "Bantu aku nulis sesuatu", Color(0xFF7B5FC7)),
+    QuickReply("😄", "Lelucon", "Kasih aku lelucon lucu", Color(0xFFE8637A))
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -213,8 +215,8 @@ fun ChatbotApp() {
                                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
                             ) {
-                                items(quickReplies) { pair ->
-                                    QuickReplyChip(label = pair.first) { sendMessage(pair.second) }
+                                items(quickReplies) { qr ->
+                                    QuickReplyChip(item = qr) { sendMessage(qr.prompt) }
                                 }
                             }
 
@@ -317,15 +319,26 @@ fun AlphaHeader(onSettingsClick: () -> Unit) {
 }
 
 @Composable
-fun QuickReplyChip(label: String, onClick: () -> Unit) {
-    Box(
+fun QuickReplyChip(item: QuickReply, onClick: () -> Unit) {
+    Row(
         modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
             .background(ChipBg)
             .clickable { onClick() }
-            .padding(horizontal = 16.dp, vertical = 10.dp)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(label, color = Color.White, fontSize = 13.sp)
+        Box(
+            modifier = Modifier
+                .size(28.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(item.boxColor),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(item.emoji, fontSize = 14.sp)
+        }
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(item.label, color = Color.White, fontSize = 13.sp)
     }
 }
 
