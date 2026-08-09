@@ -233,7 +233,7 @@ fun ChatbotApp() {
                 }
             }
 
-            HorizontalDivider(color = BorderGray, thickness = 1.dp)
+            Divider(color = BorderGray, thickness = 1.dp)
 
             Row(
                 modifier = Modifier
