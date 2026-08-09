@@ -180,7 +180,7 @@ fun ChatbotApp() {
                 }
             }
 
-            HorizontalDivider(color = Color(0xFF2A2447), thickness = 1.dp)
+            Divider(color = Color(0xFF2A2447), thickness = 1.dp)
 
             // Input bar
             Row(
