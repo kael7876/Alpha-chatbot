@@ -290,6 +290,7 @@ fun MessageBubble(msg: ChatMessage) {
 }
 
 @Composable
+@androidx.compose.material3.ExperimentalMaterial3Api
 fun SettingsScreen(settings: SettingsStore, onClose: () -> Unit) {
     var apiKey by remember { mutableStateOf(settings.apiKey) }
     var systemPrompt by remember { mutableStateOf(settings.systemPrompt) }
