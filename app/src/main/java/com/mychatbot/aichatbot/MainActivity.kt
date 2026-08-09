@@ -3,9 +3,11 @@ package com.mychatbot.aichatbot
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -23,9 +25,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -40,7 +40,6 @@ import kotlinx.coroutines.withContext
 private val BgDark = Color(0xFF000000)
 private val BubbleAssistant = Color(0xFF1C1C1C)
 private val AccentWhite = Color(0xFFFFFFFF)
-private val AccentGray = Color(0xFFB0B0B0)
 private val ChipBg = Color(0xFF1A1A1A)
 private val TextGray = Color(0xFF9E9E9E)
 private val BorderGray = Color(0xFF333333)
@@ -69,47 +68,6 @@ private val quickReplies = listOf(
     "😄 Lelucon" to "Kasih aku lelucon lucu"
 )
 
-@Composable
-fun SplashScreen(onFinished: () -> Unit) {
-    val scale = remember { Animatable(0.5f) }
-    val alpha = remember { Animatable(0f) }
-
-    LaunchedEffect(Unit) {
-        launch { scale.animateTo(1f, animationSpec = tween(700, easing = FastOutSlowInEasing)) }
-        launch { alpha.animateTo(1f, animationSpec = tween(500)) }
-        delay(1500)
-        alpha.animateTo(0f, animationSpec = tween(300))
-        onFinished()
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(BgDark),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier
-                .scale(scale.value)
-                .alpha(alpha.value)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(110.dp)
-                    .clip(CircleShape)
-                    .background(AccentWhite),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("A", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 52.sp)
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-            Text("Alpha", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 22.sp)
-            Text("gercep & santai", color = TextGray, fontSize = 12.sp)
-        }
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatbotApp() {
@@ -119,7 +77,16 @@ fun ChatbotApp() {
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
 
-    var showSplash by remember { mutableStateOf(true) }
+    // Kontrol animasi masuk aplikasi
+    var showSplashLogo by remember { mutableStateOf(true) }
+    var showChatContent by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay(1200)          // logo tampil sebentar
+        showSplashLogo = false // logo mulai memudar
+        delay(200)
+        showChatContent = true // tampilan chat mulai muncul (geser + fade)
+    }
 
     var messages by remember {
         mutableStateOf(
@@ -130,11 +97,6 @@ fun ChatbotApp() {
     var isLoading by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     var errorText by remember { mutableStateOf<String?>(null) }
-
-    if (showSplash) {
-        SplashScreen(onFinished = { showSplash = false })
-        return
-    }
 
     fun sendMessage(overrideText: String? = null) {
         val text = (overrideText ?: inputText).trim()
@@ -172,103 +134,153 @@ fun ChatbotApp() {
         return
     }
 
-    Scaffold(
-        containerColor = BgDark,
-        topBar = {
-            AlphaHeader(onSettingsClick = { showSettings = true })
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(BgDark)
-                .padding(padding)
+    Box(modifier = Modifier.fillMaxSize().background(BgDark)) {
+
+        // Konten chat utama - muncul dengan fade + geser dari atas/bawah
+        AnimatedVisibility(
+            visible = showChatContent,
+            enter = fadeIn(animationSpec = tween(500))
         ) {
-            LazyColumn(
-                state = listState,
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .padding(horizontal = 14.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                contentPadding = PaddingValues(vertical = 14.dp)
-            ) {
-                items(messages) { msg ->
-                    MessageBubble(msg)
+            Scaffold(
+                containerColor = BgDark,
+                topBar = {
+                    AnimatedVisibility(
+                        visible = showChatContent,
+                        enter = slideInVertically(
+                            initialOffsetY = { -it },
+                            animationSpec = tween(500)
+                        ) + fadeIn(animationSpec = tween(500))
+                    ) {
+                        AlphaHeader(onSettingsClick = { showSettings = true })
+                    }
                 }
-                if (isLoading) {
-                    item {
-                        Row(modifier = Modifier.fillMaxWidth()) {
-                            Text("Alpha sedang mengetik...", color = TextGray, modifier = Modifier.padding(8.dp))
+            ) { padding ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(BgDark)
+                        .padding(padding)
+                ) {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .padding(horizontal = 14.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        contentPadding = PaddingValues(vertical = 14.dp)
+                    ) {
+                        items(messages) { msg ->
+                            MessageBubble(msg)
+                        }
+                        if (isLoading) {
+                            item {
+                                Row(modifier = Modifier.fillMaxWidth()) {
+                                    Text("Alpha sedang mengetik...", color = TextGray, modifier = Modifier.padding(8.dp))
+                                }
+                            }
+                        }
+                        errorText?.let { err ->
+                            item {
+                                Text(
+                                    "⚠️ $err",
+                                    color = Color.White,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(Color(0xFF262626), RoundedCornerShape(10.dp))
+                                        .padding(12.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    LaunchedEffect(messages.size, isLoading) {
+                        if (messages.isNotEmpty()) {
+                            listState.animateScrollToItem(messages.size - 1 + if (isLoading) 1 else 0)
+                        }
+                    }
+
+                    AnimatedVisibility(
+                        visible = showChatContent,
+                        enter = slideInVertically(
+                            initialOffsetY = { it },
+                            animationSpec = tween(500)
+                        ) + fadeIn(animationSpec = tween(500))
+                    ) {
+                        Column {
+                            LazyRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
+                            ) {
+                                items(quickReplies) { pair ->
+                                    QuickReplyChip(label = pair.first) { sendMessage(pair.second) }
+                                }
+                            }
+
+                            Divider(color = BorderGray, thickness = 1.dp)
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                OutlinedTextField(
+                                    value = inputText,
+                                    onValueChange = { inputText = it },
+                                    modifier = Modifier.weight(1f),
+                                    placeholder = { Text("Suruh Alpha ngapain...", color = TextGray) },
+                                    shape = RoundedCornerShape(28.dp),
+                                    singleLine = true,
+                                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedContainerColor = ChipBg,
+                                        unfocusedContainerColor = ChipBg,
+                                        focusedBorderColor = AccentWhite,
+                                        unfocusedBorderColor = BorderGray,
+                                        focusedTextColor = Color.White,
+                                        unfocusedTextColor = Color.White,
+                                        cursorColor = AccentWhite
+                                    )
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .size(48.dp)
+                                        .clip(CircleShape)
+                                        .background(AccentWhite)
+                                        .clickable(enabled = !isLoading) { sendMessage() },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(Icons.Filled.Send, contentDescription = "Kirim", tint = Color.Black)
+                                }
+                            }
                         }
                     }
                 }
-                errorText?.let { err ->
-                    item {
-                        Text(
-                            "⚠️ $err",
-                            color = Color.White,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .background(Color(0xFF262626), RoundedCornerShape(10.dp))
-                                .padding(12.dp)
-                        )
-                    }
-                }
             }
+        }
 
-            LaunchedEffect(messages.size, isLoading) {
-                if (messages.isNotEmpty()) {
-                    listState.animateScrollToItem(messages.size - 1 + if (isLoading) 1 else 0)
-                }
-            }
-
-            LazyRow(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp)
-            ) {
-                items(quickReplies) { pair ->
-                    QuickReplyChip(label = pair.first) { sendMessage(pair.second) }
-                }
-            }
-
-            Divider(color = BorderGray, thickness = 1.dp)
-
-            Row(
+        // Logo splash - di atas semua, memudar duluan
+        AnimatedVisibility(
+            visible = showSplashLogo,
+            exit = fadeOut(animationSpec = tween(400))
+        ) {
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(14.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .fillMaxSize()
+                    .background(BgDark),
+                contentAlignment = Alignment.Center
             ) {
-                OutlinedTextField(
-                    value = inputText,
-                    onValueChange = { inputText = it },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text("Suruh Alpha ngapain...", color = TextGray) },
-                    shape = RoundedCornerShape(28.dp),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = ChipBg,
-                        unfocusedContainerColor = ChipBg,
-                        focusedBorderColor = AccentWhite,
-                        unfocusedBorderColor = BorderGray,
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        cursorColor = AccentWhite
-                    )
-                )
-                Spacer(modifier = Modifier.width(8.dp))
                 Box(
                     modifier = Modifier
-                        .size(48.dp)
+                        .size(110.dp)
                         .clip(CircleShape)
-                        .background(AccentWhite)
-                        .clickable(enabled = !isLoading) { sendMessage() },
+                        .background(AccentWhite),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Filled.Send, contentDescription = "Kirim", tint = Color.Black)
+                    Text("A", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 52.sp)
                 }
             }
         }
@@ -341,8 +353,8 @@ fun MessageBubble(msg: ChatMessage) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-@androidx.compose.material3.ExperimentalMaterial3Api
 fun SettingsScreen(settings: SettingsStore, onClose: () -> Unit) {
     var apiKey by remember { mutableStateOf(settings.apiKey) }
     var systemPrompt by remember { mutableStateOf(settings.systemPrompt) }
