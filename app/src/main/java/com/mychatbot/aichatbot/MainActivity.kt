@@ -3,6 +3,9 @@ package com.mychatbot.aichatbot
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -20,24 +23,27 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-// Palet warna dark-ungu ala desain Alpha
-private val BgDark = Color(0xFF120E23)
-private val BubbleAssistant = Color(0xFF231C42)
-private val AccentPurple = Color(0xFF8B7CF6)
-private val AccentPink = Color(0xFFDD8FE0)
-private val ChipBg = Color(0xFF201A3A)
-private val TextGray = Color(0xFFB8B3CC)
+// Palet warna hitam-putih (monokrom)
+private val BgDark = Color(0xFF000000)
+private val BubbleAssistant = Color(0xFF1C1C1C)
+private val AccentWhite = Color(0xFFFFFFFF)
+private val AccentGray = Color(0xFFB0B0B0)
+private val ChipBg = Color(0xFF1A1A1A)
+private val TextGray = Color(0xFF9E9E9E)
+private val BorderGray = Color(0xFF333333)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -47,7 +53,7 @@ class MainActivity : ComponentActivity() {
                 colorScheme = darkColorScheme(
                     background = BgDark,
                     surface = BgDark,
-                    primary = AccentPurple
+                    primary = AccentWhite
                 )
             ) {
                 ChatbotApp()
@@ -63,6 +69,47 @@ private val quickReplies = listOf(
     "😄 Lelucon" to "Kasih aku lelucon lucu"
 )
 
+@Composable
+fun SplashScreen(onFinished: () -> Unit) {
+    val scale = remember { Animatable(0.5f) }
+    val alpha = remember { Animatable(0f) }
+
+    LaunchedEffect(Unit) {
+        launch { scale.animateTo(1f, animationSpec = tween(700, easing = FastOutSlowInEasing)) }
+        launch { alpha.animateTo(1f, animationSpec = tween(500)) }
+        delay(1500)
+        alpha.animateTo(0f, animationSpec = tween(300))
+        onFinished()
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(BgDark),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier
+                .scale(scale.value)
+                .alpha(alpha.value)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(110.dp)
+                    .clip(CircleShape)
+                    .background(AccentWhite),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("A", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 52.sp)
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Alpha", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 22.sp)
+            Text("gercep & santai", color = TextGray, fontSize = 12.sp)
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChatbotApp() {
@@ -71,6 +118,8 @@ fun ChatbotApp() {
     val apiClient = remember { ClaudeApiClient() }
     val scope = rememberCoroutineScope()
     val listState = rememberLazyListState()
+
+    var showSplash by remember { mutableStateOf(true) }
 
     var messages by remember {
         mutableStateOf(
@@ -81,6 +130,11 @@ fun ChatbotApp() {
     var isLoading by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     var errorText by remember { mutableStateOf<String?>(null) }
+
+    if (showSplash) {
+        SplashScreen(onFinished = { showSplash = false })
+        return
+    }
 
     fun sendMessage(overrideText: String? = null) {
         val text = (overrideText ?: inputText).trim()
@@ -153,10 +207,10 @@ fun ChatbotApp() {
                     item {
                         Text(
                             "⚠️ $err",
-                            color = Color(0xFFFF8A8A),
+                            color = Color.White,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .background(Color(0xFF3A1F2C), RoundedCornerShape(10.dp))
+                                .background(Color(0xFF262626), RoundedCornerShape(10.dp))
                                 .padding(12.dp)
                         )
                     }
@@ -169,7 +223,6 @@ fun ChatbotApp() {
                 }
             }
 
-            // Tombol quick-reply
             LazyRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -180,9 +233,8 @@ fun ChatbotApp() {
                 }
             }
 
-            Divider(color = Color(0xFF2A2447), thickness = 1.dp)
+            HorizontalDivider(color = BorderGray, thickness = 1.dp)
 
-            // Input bar
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -200,11 +252,11 @@ fun ChatbotApp() {
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = ChipBg,
                         unfocusedContainerColor = ChipBg,
-                        focusedBorderColor = AccentPurple,
-                        unfocusedBorderColor = Color(0xFF352E5C),
+                        focusedBorderColor = AccentWhite,
+                        unfocusedBorderColor = BorderGray,
                         focusedTextColor = Color.White,
                         unfocusedTextColor = Color.White,
-                        cursorColor = AccentPurple
+                        cursorColor = AccentWhite
                     )
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -212,11 +264,11 @@ fun ChatbotApp() {
                     modifier = Modifier
                         .size(48.dp)
                         .clip(CircleShape)
-                        .background(Brush.linearGradient(listOf(AccentPurple, AccentPink)))
+                        .background(AccentWhite)
                         .clickable(enabled = !isLoading) { sendMessage() },
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Filled.Send, contentDescription = "Kirim", tint = Color.White)
+                    Icon(Icons.Filled.Send, contentDescription = "Kirim", tint = Color.Black)
                 }
             }
         }
@@ -236,7 +288,7 @@ fun AlphaHeader(onSettingsClick: () -> Unit) {
             modifier = Modifier
                 .size(48.dp)
                 .clip(CircleShape)
-                .background(Brush.linearGradient(listOf(Color(0xFFF3B65C), AccentPink, AccentPurple))),
+                .background(AccentWhite),
             contentAlignment = Alignment.Center
         ) {
             Text("A", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 20.sp)
@@ -275,7 +327,7 @@ fun MessageBubble(msg: ChatMessage) {
         Box(
             modifier = Modifier
                 .background(
-                    color = if (isUser) AccentPurple else BubbleAssistant,
+                    color = if (isUser) AccentWhite else BubbleAssistant,
                     shape = RoundedCornerShape(16.dp)
                 )
                 .padding(horizontal = 14.dp, vertical = 12.dp)
@@ -283,14 +335,13 @@ fun MessageBubble(msg: ChatMessage) {
         ) {
             Text(
                 text = msg.text,
-                color = Color.White
+                color = if (isUser) Color.Black else Color.White
             )
         }
     }
 }
 
 @Composable
-@androidx.compose.material3.ExperimentalMaterial3Api
 fun SettingsScreen(settings: SettingsStore, onClose: () -> Unit) {
     var apiKey by remember { mutableStateOf(settings.apiKey) }
     var systemPrompt by remember { mutableStateOf(settings.systemPrompt) }
@@ -326,6 +377,8 @@ fun SettingsScreen(settings: SettingsStore, onClose: () -> Unit) {
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = ChipBg,
                     unfocusedContainerColor = ChipBg,
+                    focusedBorderColor = AccentWhite,
+                    unfocusedBorderColor = BorderGray,
                     focusedTextColor = Color.White,
                     unfocusedTextColor = Color.White
                 )
@@ -348,6 +401,8 @@ fun SettingsScreen(settings: SettingsStore, onClose: () -> Unit) {
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = ChipBg,
                     unfocusedContainerColor = ChipBg,
+                    focusedBorderColor = AccentWhite,
+                    unfocusedBorderColor = BorderGray,
                     focusedTextColor = Color.White,
                     unfocusedTextColor = Color.White
                 )
@@ -363,7 +418,7 @@ fun SettingsScreen(settings: SettingsStore, onClose: () -> Unit) {
                         onClose()
                     },
                     modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(containerColor = AccentPurple)
+                    colors = ButtonDefaults.buttonColors(containerColor = AccentWhite, contentColor = Color.Black)
                 ) {
                     Text("💾 Simpan")
                 }
